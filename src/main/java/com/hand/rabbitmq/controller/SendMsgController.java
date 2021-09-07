@@ -1,5 +1,6 @@
 package com.hand.rabbitmq.controller;
 
+import com.hand.rabbitmq.config.DelayedQueueConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,8 @@ import java.util.Date;
 /**
  * @author zhuopeng.zhang@hand-china.com 2021/9/6 16:45
  * 发送延迟消息
+ *
+ * docker 安装消息延迟插件:https://www.cnblogs.com/mirage0/p/14397930.html
  */
 @Slf4j
 @RestController
@@ -38,7 +41,19 @@ public class SendMsgController {
     public void sendMsg(@PathVariable String message,@PathVariable String ttlTime){
         log.info("当前时间：{}，发送一条时常{}毫秒TTL信息给队列QC：{}",new Date().toString(),ttlTime,message);
         rabbitTemplate.convertAndSend("X","XC",message,msg ->{
+            //发送消息的时候 延迟时常
             msg.getMessageProperties().setExpiration(ttlTime);
+            return msg;
+        });
+    }
+
+    //开始发消息 基于插件的消息及延迟时间
+    @GetMapping("/sendDelayMsg/{message}/{delayTime}")
+    public void sendDelayMsg(@PathVariable String message,@PathVariable Integer delayTime){
+        log.info("当前时间：{}，发送一条时常{}毫秒信息给延迟队列delayed.queue：{}",new Date().toString(),delayTime,message);
+        rabbitTemplate.convertAndSend(DelayedQueueConfig.DELAYED_EXCHANGE_NAME,DelayedQueueConfig.DELAYED_ROUTING_KEY,message, msg ->{
+            //发送消息的时候 延迟时常  单位ms
+            msg.getMessageProperties().setDelay(delayTime);
             return msg;
         });
     }
